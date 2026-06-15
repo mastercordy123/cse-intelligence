@@ -23,6 +23,7 @@ function App() {
   const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   const processData = (data: { sectors: SectorData[], marketStatus: MarketStatus }) => {
     if (data.sectors && data.sectors.length > 0) {
@@ -60,8 +61,17 @@ function App() {
 
   useEffect(() => {
     fetchSectors();
-    const interval = setInterval(fetchSectors, 30000);
-    return () => clearInterval(interval);
+    const dataInterval = setInterval(fetchSectors, 30000);
+    
+    // Real-time clock interval (updates every second)
+    const clockInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(clockInterval);
+    };
   }, []);
 
   const getMetricTrend = (current: number, previous: number | null) => {
@@ -72,6 +82,13 @@ function App() {
       return { className: 'trend-up', icon: <TrendingUp size={14} />, label: 'Rising', color: 'var(--accent-success)' };
     }
     return { className: 'trend-down', icon: <TrendingDown size={14} />, label: 'Falling', color: 'var(--accent-danger)' };
+  };
+
+  const getTimeSinceLastUpdate = () => {
+    const diff = Math.floor((currentTime.getTime() - lastRefresh.getTime()) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    const mins = Math.floor(diff / 60);
+    return `${mins}m ${diff % 60}s ago`;
   };
 
   return (
@@ -112,10 +129,10 @@ function App() {
           
           <div className="stat-card">
             <div className="stat-header">
-              <span className="stat-label">Last Transmission</span>
+              <span className="stat-label">System Time</span>
               <div className="stat-icon-wrapper"><Clock size={18} /></div>
             </div>
-            <span className="stat-value">{lastRefresh.toLocaleTimeString([], { hour12: false })}</span>
+            <span className="stat-value">{currentTime.toLocaleTimeString([], { hour12: false })}</span>
           </div>
 
           <div className="stat-card">
@@ -126,8 +143,7 @@ function App() {
               </div>
             </div>
             <span className="stat-value" style={{ 
-              color: marketStatus?.isOpen ? 'var(--accent-success)' : 'var(--accent-danger)', 
-              fontSize: '1.25rem' 
+              color: marketStatus?.isOpen ? 'var(--accent-success)' : 'var(--accent-danger)'
             }}>
               {marketStatus?.reason === 'OPEN' ? 'OPERATIONAL' : marketStatus?.reason || 'OFFLINE'}
             </span>

@@ -60,26 +60,27 @@ export class ScraperService {
           const text = table.innerText;
           
           // Capture P/E and P/BV Ratios from the summary table
-          // Headers: GIG, Index, TURNOVER VALUE, TURNOVER VOLUME, TRADE VOLUME, PER, PBV, ...
           if (text.includes('GIG') && text.includes('PER') && text.includes('PBV')) {
             const rows = Array.from(table.querySelectorAll('tr'));
             rows.forEach(row => {
               const cols = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
-              if (cols.length >= 7 && cols[0]) {
+              if (cols.length >= 7) {
                 const code = cols[0];
-                
-                // P/E Ratio (Index 5)
-                const peStr = cols[5].replace(/,/g, '');
-                const peRatio = parseFloat(peStr);
-                if (!isNaN(peRatio)) {
-                  peMap[code] = peRatio;
-                }
+                const peRaw = cols[5];
+                const pbvRaw = cols[6];
 
-                // P/BV Ratio (Index 6)
-                const pbvStr = cols[6].replace(/,/g, '');
-                const pbvRatio = parseFloat(pbvStr);
-                if (!isNaN(pbvRatio)) {
-                  pbvMap[code] = pbvRatio;
+                if (code && peRaw && pbvRaw) {
+                  const peStr = peRaw.replace(/,/g, '');
+                  const peRatio = parseFloat(peStr);
+                  if (!isNaN(peRatio)) {
+                    peMap[code] = peRatio;
+                  }
+
+                  const pbvStr = pbvRaw.replace(/,/g, '');
+                  const pbvRatio = parseFloat(pbvStr);
+                  if (!isNaN(pbvRatio)) {
+                    pbvMap[code] = pbvRatio;
+                  }
                 }
               }
             });
@@ -90,10 +91,12 @@ export class ScraperService {
             const rows = Array.from(table.querySelectorAll('tr'));
             rows.forEach(row => {
               const cols = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
-              if (cols.length >= 4 && cols[0]) {
+              if (cols.length >= 4) {
                 const code = cols[0];
                 const name = cols[3];
-                nameMap[code] = name;
+                if (code && name) {
+                  nameMap[code] = name;
+                }
               }
             });
           }
@@ -106,8 +109,8 @@ export class ScraperService {
       const finalSectors: SectorData[] = Object.keys(result.nameMap).map(code => {
         const existing = this.currentData.get(code);
         
-        const currentPe = result.peMap[code] !== undefined ? result.peMap[code] : 0;
-        const currentPbv = result.pbvMap[code] !== undefined ? result.pbvMap[code] : 0;
+        const currentPe = result.peMap[code] !== undefined ? (result.peMap[code] as number) : 0;
+        const currentPbv = result.pbvMap[code] !== undefined ? (result.pbvMap[code] as number) : 0;
         
         let prevPe = existing ? existing.peRatio : null;
         let prevPbv = existing ? existing.pbvRatio : null;
@@ -128,7 +131,7 @@ export class ScraperService {
 
         return {
           code,
-          name: result.nameMap[code],
+          name: result.nameMap[code] || code,
           peRatio: currentPe,
           prevPeRatio: prevPe,
           pbvRatio: currentPbv,
